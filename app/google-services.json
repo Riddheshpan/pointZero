@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "143274274118",
+    "project_id": "pointzero-5f2d3",
+    "storage_bucket": "pointzero-5f2d3.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:143274274118:android:87ba89d30d03e990020947",
+        "android_client_info": {
+          "package_name": "com.example.attendancetracker"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyC-_ia_P4Ii_UACIIceiGguZ0u5dppatC4"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
