@@ -6,8 +6,6 @@ import android.view.ViewGroup;
 import android.widget.TextView;
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
-import com.example.attendancetracker.R;
-import com.example.attendancetracker.Subject;
 import java.util.List;
 
 public class SubjectAdapter extends RecyclerView.Adapter<SubjectAdapter.ViewHolder> {
@@ -17,6 +15,7 @@ public class SubjectAdapter extends RecyclerView.Adapter<SubjectAdapter.ViewHold
 
     public interface OnSubjectClickListener {
         void onSubjectClick(Subject subject);
+        void onSubjectLongClick(Subject subject); // Added for Export
     }
 
     public SubjectAdapter(List<Subject> subjectList, OnSubjectClickListener listener) {
@@ -27,7 +26,6 @@ public class SubjectAdapter extends RecyclerView.Adapter<SubjectAdapter.ViewHold
     @NonNull
     @Override
     public ViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
-        // You'll need a simple item_subject.xml for the card design
         View view = LayoutInflater.from(parent.getContext()).inflate(android.R.layout.simple_list_item_2, parent, false);
         return new ViewHolder(view);
     }
@@ -37,7 +35,15 @@ public class SubjectAdapter extends RecyclerView.Adapter<SubjectAdapter.ViewHold
         Subject subject = subjectList.get(position);
         holder.text1.setText(subject.getName());
         holder.text2.setText(subject.getTime() + " | Room: " + subject.getClassroom());
+        
+        // Single click to scan
         holder.itemView.setOnClickListener(v -> listener.onSubjectClick(subject));
+        
+        // Long click to export Excel/CSV
+        holder.itemView.setOnLongClickListener(v -> {
+            listener.onSubjectLongClick(subject);
+            return true;
+        });
     }
 
     @Override

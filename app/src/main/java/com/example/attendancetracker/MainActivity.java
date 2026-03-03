@@ -8,11 +8,6 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
-import com.example.attendancetracker.SubjectAdapter;
-import com.example.attendancetracker.FirebaseManager;
-import com.example.attendancetracker.Subject;
-import com.example.attendancetracker.AttendanceExporter;
-
 import java.util.ArrayList;
 import java.util.List;
 
@@ -54,25 +49,26 @@ public class MainActivity extends AppCompatActivity {
                 intent.putExtra("SUBJECT_NAME", subject.getName());
                 startActivity(intent);
             }
-        });
 
-        // If you want to add an export trigger, you can handle it via a long-press
-        // or by adding a button within the SubjectAdapter's ViewHolder.
-        // For this example, we'll implement a helper method to handle the export.
+            @Override
+            public void onSubjectLongClick(Subject subject) {
+                // Trigger Excel export on long press
+                performExport(subject.getName());
+            }
+        });
 
         recyclerView.setAdapter(adapter);
     }
 
     /**
      * Helper method to trigger the Excel/CSV export for a specific subject.
-     * You can call this from a button inside your RecyclerView items.
      */
     public void performExport(String subjectName) {
         Toast.makeText(this, "Fetching data for " + subjectName, Toast.LENGTH_SHORT).show();
 
         firebaseManager.fetchFullSubjectHistory(subjectName, data -> {
-            if (data.exists()) {
-                // Call the AttendanceExporter utility from the Canvas
+            if (data != null && data.exists()) {
+                // Call the AttendanceExporter utility
                 AttendanceExporter.exportToCSVAndShare(MainActivity.this, subjectName, data);
             } else {
                 Toast.makeText(MainActivity.this, "No history found for this subject.", Toast.LENGTH_LONG).show();

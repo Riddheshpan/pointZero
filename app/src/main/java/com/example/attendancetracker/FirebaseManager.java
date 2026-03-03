@@ -1,7 +1,10 @@
 package com.example.attendancetracker;
 
+import com.google.firebase.database.DataSnapshot;
+import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
+import com.google.firebase.database.ValueEventListener;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.HashMap;
@@ -65,7 +68,24 @@ public class FirebaseManager {
         });
     }
 
-    public void fetchFullSubjectHistory(String subjectName, Object o) {
+    /**
+     * Fetches the entire attendance history for a given subject.
+     * @param subjectName Name of the subject.
+     * @param listener Callback to return the DataSnapshot.
+     */
+    public void fetchFullSubjectHistory(String subjectName, HistoryCallback listener) {
+        db.child("attendance").child(subjectName.replace(" ", "_"))
+                .addListenerForSingleValueEvent(new ValueEventListener() {
+                    @Override
+                    public void onDataChange(DataSnapshot snapshot) {
+                        listener.onDataReceived(snapshot);
+                    }
+
+                    @Override
+                    public void onCancelled(DatabaseError error) {
+                        // In a real app, you'd handle this error via the listener too
+                    }
+                });
     }
 
     /**
@@ -74,5 +94,9 @@ public class FirebaseManager {
     public interface FirebaseCallback {
         void onSuccess(String message);
         void onFailure(String error);
+    }
+
+    public interface HistoryCallback {
+        void onDataReceived(DataSnapshot snapshot);
     }
 }
