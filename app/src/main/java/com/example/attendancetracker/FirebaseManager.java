@@ -65,6 +65,9 @@ public class FirebaseManager {
         });
     }
 
+    public void fetchFullSubjectHistory(String subjectName, Object o) {
+    }
+
     /**
      * Interface to communicate results back to the Activity (e.g., ScanActivity).
      */
