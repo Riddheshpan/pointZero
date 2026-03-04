@@ -2,4 +2,14 @@
 <resources>
     <color name="black">#FF000000</color>
     <color name="white">#FFFFFFFF</color>
+
+    <!-- Futuristic Palette -->
+    <color name="bg_dark">#0F172A</color>
+    <color name="bg_dark_variant">#1E293B</color>
+    <color name="neon_blue">#38BDF8</color>
+    <color name="neon_purple">#818CF8</color>
+    <color name="text_main">#F8FAFC</color>
+    <color name="text_secondary">#94A3B8</color>
+    <color name="glass_white">#1AFFFFFF</color>
+    <color name="accent_glow">#4038BDF8</color>
 </resources>

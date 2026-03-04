@@ -1,6 +1,7 @@
 package com.example.attendancetracker;
 
 import android.Manifest;
+import android.app.AlertDialog;
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
 import android.content.BroadcastReceiver;
@@ -15,6 +16,8 @@ import android.util.Log;
 import android.view.View;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
+import android.widget.EditText;
+import android.widget.LinearLayout;
 import android.widget.ListView;
 import android.widget.ProgressBar;
 import android.widget.TextView;
@@ -24,26 +27,27 @@ import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 
-import com.example.attendancetracker.FirebaseManager;
-
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
 
 /**
  * Optimized ScanActivity to handle Firebase connectivity,
- * device name resolution, and scan stability.
+ * student directory lookup (MAC -> Name/Enroll), and scan stability.
+ * Long-press a device to register it into the master directory.
  */
 public class ScanActivity extends AppCompatActivity {
 
     private BluetoothAdapter bluetoothAdapter;
     private ArrayList<String> deviceList = new ArrayList<>();
     private Map<String, String> discoveredDevicesMap = new HashMap<>();
+    private Map<String, String> studentDirectory = new HashMap<>();
     private ArrayAdapter<String> adapter;
     private String subjectName;
     private ListView listView;
     private ProgressBar progressBar;
     private TextView statusTv;
+    private FirebaseManager firebaseManager;
     private boolean isReceiverRegistered = false;
 
     private static final int PERMISSION_REQUEST_CODE = 101;
@@ -54,19 +58,34 @@ public class ScanActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.scan_activity);
 
+        firebaseManager = new FirebaseManager();
+
         subjectName = getIntent().getStringExtra("SUBJECT_NAME");
         if (subjectName == null || subjectName.isEmpty()) subjectName = "Unspecified_Subject";
 
         TextView titleTv = findViewById(R.id.textViewSubjectTitle);
         titleTv.setText("Lecture: " + subjectName);
 
-        statusTv = findViewById(R.id.textViewStatus); // Ensure this ID exists in your XML
-        progressBar = findViewById(R.id.progressBarScan); // Ensure this ID exists in your XML
+        statusTv = findViewById(R.id.textViewStatus);
+        progressBar = findViewById(R.id.progressBarScan);
 
         listView = findViewById(R.id.listViewDevices);
         adapter = new ArrayAdapter<>(this, android.R.layout.simple_list_item_multiple_choice, deviceList);
         listView.setAdapter(adapter);
         listView.setChoiceMode(ListView.CHOICE_MODE_MULTIPLE);
+
+        // Pre-load student directory from Firebase
+        loadStudentDirectory();
+
+        // Add long-press listener to register new students
+        listView.setOnItemLongClickListener((parent, view, position, id) -> {
+            String info = deviceList.get(position);
+            String[] parts = info.split("\n");
+            if (parts.length >= 2) {
+                showRegistrationDialog(parts[1], parts[0]); // parts[1] is MAC, parts[0] is current Name
+            }
+            return true;
+        });
 
         bluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
         Button btnScan = findViewById(R.id.btnStartScan);
@@ -98,22 +117,70 @@ public class ScanActivity extends AppCompatActivity {
                 return;
             }
 
-            // Problem 1 Fix: Detailed callback for Firebase troubleshooting
-            FirebaseManager fbManager = new FirebaseManager();
-            fbManager.uploadAttendance(subjectName, selectedStudents, new FirebaseManager.FirebaseCallback() {
+            firebaseManager.uploadAttendance(subjectName, selectedStudents, new FirebaseManager.FirebaseCallback() {
                 @Override
                 public void onSuccess(String message) {
-                    Toast.makeText(ScanActivity.this, "Success: Data Saved to Cloud", Toast.LENGTH_LONG).show();
+                    Toast.makeText(ScanActivity.this, message, Toast.LENGTH_LONG).show();
                     finish();
                 }
 
                 @Override
                 public void onFailure(String error) {
-                    // Log the actual Firebase error for debugging
                     Log.e("FirebaseError", error);
                     Toast.makeText(ScanActivity.this, "Firebase Error: " + error, Toast.LENGTH_LONG).show();
                 }
             });
+        });
+    }
+
+    private void showRegistrationDialog(String macAddress, String currentName) {
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        builder.setTitle("Register Student");
+        builder.setMessage("MAC: " + macAddress);
+
+        final EditText inputName = new EditText(this);
+        inputName.setHint("Enter Student Name");
+        
+        final EditText inputEnroll = new EditText(this);
+        inputEnroll.setHint("Enter Enrollment Number");
+
+        LinearLayout layout = new LinearLayout(this);
+        layout.setOrientation(LinearLayout.VERTICAL);
+        layout.setPadding(40, 20, 40, 20);
+        layout.addView(inputName);
+        layout.addView(inputEnroll);
+        builder.setView(layout);
+
+        builder.setPositiveButton("Register", (dialog, which) -> {
+            String name = inputName.getText().toString().trim();
+            String enroll = inputEnroll.getText().toString().trim();
+            
+            if (!name.isEmpty() && !enroll.isEmpty()) {
+                String fullIdentity = name + " (" + enroll + ")";
+                firebaseManager.registerStudent(macAddress, fullIdentity, new FirebaseManager.FirebaseCallback() {
+                    @Override
+                    public void onSuccess(String message) {
+                        Toast.makeText(ScanActivity.this, message, Toast.LENGTH_SHORT).show();
+                        loadStudentDirectory(); // Refresh local copy
+                    }
+
+                    @Override
+                    public void onFailure(String error) {
+                        Toast.makeText(ScanActivity.this, "Failed: " + error, Toast.LENGTH_SHORT).show();
+                    }
+                });
+            } else {
+                Toast.makeText(this, "Name and Enroll are required", Toast.LENGTH_SHORT).show();
+            }
+        });
+        builder.setNegativeButton("Cancel", null);
+        builder.show();
+    }
+
+    private void loadStudentDirectory() {
+        firebaseManager.getStudentDirectory(directory -> {
+            studentDirectory = directory;
+            Log.d("ScanActivity", "Directory loaded with " + directory.size() + " students.");
         });
     }
 
@@ -182,7 +249,7 @@ public class ScanActivity extends AppCompatActivity {
             if (!isReceiverRegistered) {
                 IntentFilter filter = new IntentFilter();
                 filter.addAction(BluetoothDevice.ACTION_FOUND);
-                filter.addAction(BluetoothDevice.ACTION_NAME_CHANGED); // Listen for name resolution
+                filter.addAction(BluetoothDevice.ACTION_NAME_CHANGED);
                 filter.addAction(BluetoothAdapter.ACTION_DISCOVERY_STARTED);
                 filter.addAction(BluetoothAdapter.ACTION_DISCOVERY_FINISHED);
                 registerReceiver(receiver, filter);
@@ -207,7 +274,6 @@ public class ScanActivity extends AppCompatActivity {
                 if (progressBar != null) progressBar.setVisibility(View.GONE);
                 if (statusTv != null) statusTv.setText("Scan Complete. Select students below.");
             }
-            // Problem 2 & 3 Fix: Handle Found and Name Changed events
             else if (BluetoothDevice.ACTION_FOUND.equals(action) || BluetoothDevice.ACTION_NAME_CHANGED.equals(action)) {
                 BluetoothDevice device = intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE);
                 if (device != null) {
@@ -217,19 +283,22 @@ public class ScanActivity extends AppCompatActivity {
                             return;
                         }
 
-                        String name = device.getName();
                         String address = device.getAddress();
-
-                        // If name is still null, we check if we already have it
+                        String sanitizedMac = address.replace(":", "_");
+                        
+                        String name = studentDirectory.get(sanitizedMac);
+                        
                         if (name == null || name.isEmpty()) {
-                            name = discoveredDevicesMap.containsKey(address) ? discoveredDevicesMap.get(address) : "Unnamed Device";
+                            name = device.getName();
                         }
 
-                        // Update Logic: If it's a new device or an update to an "Unnamed" one
+                        if (name == null || name.isEmpty()) {
+                            name = discoveredDevicesMap.getOrDefault(address, "Unnamed Device");
+                        }
+
                         if (!discoveredDevicesMap.containsKey(address) || (discoveredDevicesMap.get(address).equals("Unnamed Device") && !name.equals("Unnamed Device"))) {
                             discoveredDevicesMap.put(address, name);
 
-                            // Remove old "Unnamed" entry if it exists to prevent duplicates
                             for (int i = 0; i < deviceList.size(); i++) {
                                 if (deviceList.get(i).contains(address)) {
                                     deviceList.remove(i);

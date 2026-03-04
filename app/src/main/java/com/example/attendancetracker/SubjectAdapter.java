@@ -15,7 +15,7 @@ public class SubjectAdapter extends RecyclerView.Adapter<SubjectAdapter.ViewHold
 
     public interface OnSubjectClickListener {
         void onSubjectClick(Subject subject);
-        void onSubjectLongClick(Subject subject); // Added for Export
+        void onSubjectLongClick(Subject subject);
     }
 
     public SubjectAdapter(List<Subject> subjectList, OnSubjectClickListener listener) {
@@ -26,7 +26,8 @@ public class SubjectAdapter extends RecyclerView.Adapter<SubjectAdapter.ViewHold
     @NonNull
     @Override
     public ViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
-        View view = LayoutInflater.from(parent.getContext()).inflate(android.R.layout.simple_list_item_2, parent, false);
+        // Use our new futuristic item_subject layout instead of the system default
+        View view = LayoutInflater.from(parent.getContext()).inflate(R.layout.item_subject, parent, false);
         return new ViewHolder(view);
     }
 
@@ -34,12 +35,9 @@ public class SubjectAdapter extends RecyclerView.Adapter<SubjectAdapter.ViewHold
     public void onBindViewHolder(@NonNull ViewHolder holder, int position) {
         Subject subject = subjectList.get(position);
         holder.text1.setText(subject.getName());
-        holder.text2.setText(subject.getTime() + " | Room: " + subject.getClassroom());
+        holder.text2.setText(subject.getTime() + " | " + subject.getClassroom());
         
-        // Single click to scan
         holder.itemView.setOnClickListener(v -> listener.onSubjectClick(subject));
-        
-        // Long click to export Excel/CSV
         holder.itemView.setOnLongClickListener(v -> {
             listener.onSubjectLongClick(subject);
             return true;
@@ -53,8 +51,8 @@ public class SubjectAdapter extends RecyclerView.Adapter<SubjectAdapter.ViewHold
         TextView text1, text2;
         public ViewHolder(@NonNull View itemView) {
             super(itemView);
-            text1 = itemView.findViewById(android.R.id.text1);
-            text2 = itemView.findViewById(android.R.id.text2);
+            text1 = itemView.findViewById(R.id.text1);
+            text2 = itemView.findViewById(R.id.text2);
         }
     }
 }
